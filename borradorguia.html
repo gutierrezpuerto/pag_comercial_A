@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    import React, { useMemo, useState } from "react";
+
+/**
+ * Tienda Mayorista/Minorista — Single-file React component
+ * ---------------------------------------------------------
+ * Qué incluye (frontend listo para probar en el canvas):
+ * - Header con 3 solapas: Favoritos, Registro/Ingreso (simulado), Carrito (contador).
+ * - Logo + nombre de empresa, buscador, teléfono de contacto, mini resumen del carrito.
+ * - Barra de navegación con: Inicio, Categorías, Nosotros, Envíos (estimador por CP), Pagos, Contacto.
+ * - Catálogo que cambia según el tipo de cliente: Invitado/Minorista vs Mayorista (registrado).
+ * - Modo oscuro con toggle.
+ * - Favoritos (guarda si marcaste el producto estando en vista mayorista o minorista).
+ * - Carrito con modal de detalle en tabla: Cant., Código, Descripción, Precio unitario, Total por ítem y Total general.
+ * - Filtrado por categoría y búsqueda por texto.
+ *
+ * NOTA: El login/registro está SIMULADO en frontend para demostrar el flujo.
+ * En un proyecto real, conectarías el formulario con una API (PHP/Node/etc.) y MySQL.
+ *
+ * Al final del archivo encontrarás:
+ * 1) Sugerencia de esquema MySQL.
+ * 2) Endpoints REST sugeridos.
+ * 3) Notas para separar en componentes/productivizar.
+ */
+
+// ---------- Mock de productos (en un backend real, esto vendría de la API) ----------
+const MOCK_PRODUCTS = [
+  {
+    id: 1,
+    code: "A-1001",
+    name: "Cinta de Embalar 48mm",
+    description: "Cinta adherente alta resistencia.",
+    category: "Embalaje",
+    priceRetail: 1800,
+    priceWholesale: 1300,
+    featuredRetail: true,
+  },
+  {
+    id: 2,
+    code: "B-2002",
+    name: "Caja Cartón N°4",
+    description: "Caja reforzada para envíos.",
+    category: "Embalaje",
+    priceRetail: 3500,
+    priceWholesale: 2600,
+    featuredRetail: true,
+  },
+  {
+    id: 3,
+    code: "C-3003",
+    name: "Bolsa Eco 40x50",
+    description: "Bolsa reutilizable de tela no tejida.",
+    category: "Bolsas",
+    priceRetail: 2200,
+    priceWholesale: 1600,
+    featuredRetail: false,
+  },
+  {
+    id: 4,
+    code: "D-4004",
+    name: "Film Stretch 500mm",
+    description: "Film para paletizado.",
+    category: "Embalaje",
+    priceRetail: 7200,
+    priceWholesale: 5400,
+    featuredRetail: false,
+  },
+  {
+    id: 5,
+    code: "E-5005",
+    name: "Etiqueta Térmica 100x150",
+    description: "Rollo 500 etiquetas.",
+    category: "Etiquetas",
+    priceRetail: 6800,
+    priceWholesale: 5100,
+    featuredRetail: true,
+  },
+];
+
+const CATEGORIES = ["Todas", "Embalaje", "Bolsas", "Etiquetas"];
+
+// ---------- Utilidades ----------
+function currency(n) {
+  return n.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+}
+
+function classNames(...args) {
+  return args.filter(Boolean).join(" ");
+}
+
+// ---------- Componente principal ----------
+export default function WholesaleRetailStore() {
+  // Modo oscuro
+  const [dark, setDark] = useState(false);
+
+  // Usuario: "guest" (invitado/minorista) o "wholesale" (mayorista)
+  const [userType, setUserType] = useState("guest");
+
+  // Estado UI
+  const [activeTab, setActiveTab] = useState("catalog"); // catalog | favorites | account | cart | shipping | about | payments | contact
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("Todas");
+
+  // Carrito [{ product, qty, priceApplied }]
+  const [cart, setCart] = useState([]);
+  const cartCount = cart.reduce((acc, i) => acc + i.qty, 0);
+  const cartTotal = cart.reduce((acc, i) => acc + i.qty * i.priceApplied, 0);
+
+  // Favoritos: [{ productId, mode: "retail"|"wholesale" }]
+  const [favs, setFavs] = useState([]);
+
+  // Envíos (estimador por código postal)
+  const [postalCode, setPostalCode] = useState("");
+  const shippingEstimate = useMemo(() => {
+    if (!postalCode) return null;
+    // Simulación simple: base + zona
+    const base = 2500;
+    const zone = /^[12]/.test(postalCode) ? 1200 : /^[345]/.test(postalCode) ? 2200 : 3500;
+    return base + zone;
+  }, [postalCode]);
+
+  // Catálogo filtrado según usuario y UI
+  const visibleProducts = useMemo(() => {
+    let list = [...MOCK_PRODUCTS];
+
+    // Invitado/minorista: mostrar retail; además priorizar destacados para minorista
+    if (userType === "guest") {
+      // (opcional) podrías ocultar los no destacados
+      // list = list.filter(p => p.featuredRetail);
+      // Por ahora mostramos todo pero con "Destacado" donde aplique
+    }
+
+    if (category !== "Todas") list = list.filter((p) => p.category === category);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.code.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [userType, category, search]);
+
+  // Acciones
+  const addToCart = (product) => {
+    const priceApplied = userType === "wholesale" ? product.priceWholesale : product.priceRetail;
+    setCart((prev) => {
+      const idx = prev.findIndex((i) => i.product.id === product.id && i.priceApplied === priceApplied);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
+        return copy;
+      }
+      return [...prev, { product, qty: 1, priceApplied }];
+    });
+  };
+
+  const toggleFav = (product) => {
+    const mode = userType === "wholesale" ? "wholesale" : "retail";
+    setFavs((prev) => {
+      const exists = prev.find((f) => f.productId === product.id && f.mode === mode);
+      if (exists) return prev.filter((f) => !(f.productId === product.id && f.mode === mode));
+      return [...prev, { productId: product.id, mode }];
+    });
+  };
+
+  const removeFromCart = (productId, priceApplied) => {
+    setCart((prev) => prev.filter((i) => !(i.product.id === productId && i.priceApplied === priceApplied)));
+  };
+
+  const updateQty = (productId, priceApplied, qty) => {
+    setCart((prev) =>
+      prev.map((i) =>
+        i.product.id === productId && i.priceApplied === priceApplied
+          ? { ...i, qty: Math.max(1, Number(qty) || 1) }
+          : i
+      )
+    );
+  };
+
+  // Render
+  return (
+    <div className={classNames("min-h-screen", dark ? "dark" : "")}> 
+      <div className="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+        {/* Topbar con tabs */}
+        <div className="border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab("favorites")}
+                className={classNames(
+                  "px-3 py-1 rounded-full text-sm",
+                  activeTab === "favorites"
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+                aria-label="Favoritos"
+              >
+                Favoritos
+              </button>
+              <button
+                onClick={() => setActiveTab("account")}
+                className={classNames(
+                  "px-3 py-1 rounded-full text-sm",
+                  activeTab === "account"
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+                aria-label="Registro / Ingreso"
+              >
+                Registro / Ingreso
+              </button>
+              <button
+                onClick={() => setActiveTab("cart")}
+                className={classNames(
+                  "px-3 py-1 rounded-full text-sm flex items-center gap-2",
+                  activeTab === "cart"
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+                aria-label="Carrito"
+              >
+                <CartIcon />
+                <span>Carrito</span>
+                <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 rounded-full bg-gray-900 text-white text-xs dark:bg-white dark:text-gray-900">
+                  {cartCount}
+                </span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="text-sm opacity-80">Modo</div>
+              <button
+                onClick={() => setDark((d) => !d)}
+                className="flex items-center gap-2 px-3 py-1 rounded-full border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Alternar modo oscuro"
+              >
+                {dark ? <MoonIcon /> : <SunIcon />}
+                <span className="text-sm">{dark ? "Oscuro" : "Claro"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Header principal */}
+        <header className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Logo y marca */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold">
+                TM
+              </div>
+              <div>
+                <div className="text-xl font-bold">TuMarca S.R.L.</div>
+                <div className="text-sm opacity-80">Mayorista & Minorista</div>
+                {/* Buscador debajo del nombre */}
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar productos o secciones..."
+                    className="w-full max-w-md px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Teléfono */}
+            <div className="text-right">
+              <div className="text-sm opacity-70">Contacto</div>
+              <div className="text-lg font-semibold">+54 11 5555-1234</div>
+            </div>
+
+            {/* Mini carrito a la derecha con total y botón para abrir detalle */}
+            <div className="flex flex-col items-end">
+              <div className="flex items-center gap-3">
+                <CartIcon />
+                <div className="text-sm">
+                  <div>Total:</div>
+                  <div className="font-semibold">{currency(cartTotal)}</div>
+                </div>
+                <button
+                  onClick={() => setActiveTab("cart")}
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  Ver detalle
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Navbar */}
+          <nav className="mt-6">
+            <div className="w-full rounded-2xl bg-gray-100 dark:bg-gray-800 p-2 flex flex-wrap items-center gap-2">
+              <NavButton active={activeTab === "catalog"} onClick={() => setActiveTab("catalog")}>Inicio</NavButton>
+              <CategorySelect value={category} setValue={setCategory} />
+              <NavButton active={activeTab === "about"} onClick={() => setActiveTab("about")}>Nosotros</NavButton>
+              <NavButton active={activeTab === "shipping"} onClick={() => setActiveTab("shipping")}>Envíos</NavButton>
+              <NavButton active={activeTab === "payments"} onClick={() => setActiveTab("payments")}>Formas de pago</NavButton>
+              <NavButton active={activeTab === "contact"} onClick={() => setActiveTab("contact")}>Contacto</NavButton>
+
+              {/* Selector tipo de cliente */}
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-sm opacity-80">Tipo de cliente:</span>
+                <select
+                  value={userType}
+                  onChange={(e) => setUserType(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-sm"
+                >
+                  <option value="guest">Invitado / Minorista</option>
+                  <option value="wholesale">Mayorista (registrado)</option>
+                </select>
+              </div>
+            </div>
+          </nav>
+        </header>
+
+        {/* Contenido principal por pestaña */}
+        <main className="max-w-7xl mx-auto px-4 pb-16">
+          {activeTab === "catalog" && (
+            <section className="mt-4">
+              {/* Aviso de vista */}
+              <div className="mb-4 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                <div className="text-sm">
+                  <strong>Vista actual:</strong> {userType === "wholesale" ? "Mayorista" : "Minorista"}
+                  {userType === "guest" && (
+                    <span className="ml-2 opacity-80">(muestra precios minoristas; productos destacados resaltados)</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Grid de productos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {visibleProducts.map((p) => {
+                  const price = userType === "wholesale" ? p.priceWholesale : p.priceRetail;
+                  const isFav = favs.some((f) => f.productId === p.id && f.mode === (userType === "wholesale" ? "wholesale" : "retail"));
+                  return (
+                    <div key={p.id} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 flex flex-col">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">{p.code}</div>
+                        {userType === "guest" && p.featuredRetail && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-amber-200 text-amber-900">Destacado</span>
+                        )}
+                      </div>
+                      <div className="h-28 rounded-xl bg-gray-100 dark:bg-gray-800 mb-3 flex items-center justify-center text-gray-400">
+                        IMG
+                      </div>
+                      <div className="font-semibold">{p.name}</div>
+                      <div className="text-sm opacity-80">{p.description}</div>
+                      <div className="mt-2 text-lg font-bold">{currency(price)}</div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          onClick={() => addToCart(p)}
+                          className="px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Agregar
+                        </button>
+                        <button
+                          onClick={() => toggleFav(p)}
+                          className={classNames(
+                            "px-3 py-2 rounded-xl border",
+                            isFav
+                              ? "border-pink-600 text-pink-600"
+                              : "border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          )}
+                        >
+                          {isFav ? "★ Favorito" : "☆ Favorito"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {activeTab === "favorites" && (
+            <section className="mt-6">
+              <h2 className="text-xl font-bold mb-3">Favoritos</h2>
+              {favs.length === 0 ? (
+                <div className="opacity-70">Todavía no marcaste favoritos.</div>
+              ) : (
+                <div className="space-y-3">
+                  {favs.map((f) => {
+                    const p = MOCK_PRODUCTS.find((x) => x.id === f.productId);
+                    const price = f.mode === "wholesale" ? p.priceWholesale : p.priceRetail;
+                    return (
+                      <div key={`${f.productId}-${f.mode}`} className="flex items-center justify-between rounded-2xl border border-gray-200 dark:border-gray-800 p-3 bg-white dark:bg-gray-900">
+                        <div>
+                          <div className="text-sm opacity-70">{p.code} • {f.mode === "wholesale" ? "Mayorista" : "Minorista"}</div>
+                          <div className="font-semibold">{p.name}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm opacity-70">Precio</div>
+                          <div className="font-bold">{currency(price)}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeTab === "account" && (
+            <section className="mt-6 max-w-lg">
+              <h2 className="text-xl font-bold mb-3">Registro / Ingreso</h2>
+              <p className="text-sm opacity-80 mb-4">
+                Simulación: al registrarte/iniciar sesión como empresa validada, pasarás a vista <strong>Mayorista</strong>.
+                En un proyecto real, este formulario se conecta a tu backend y MySQL.
+              </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setUserType("wholesale");
+                  setActiveTab("catalog");
+                }}
+                className="space-y-3"
+              >
+                <div>
+                  <label className="block text-sm mb-1">CUIT / Empresa</label>
+                  <input className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900" placeholder="20-12345678-9" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm mb-1">Email</label>
+                    <input type="email" className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900" placeholder="empresa@dominio.com" />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Contraseña</label>
+                    <input type="password" className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900" placeholder="••••••••" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <input id="tos" type="checkbox" className="rounded" />
+                  <label htmlFor="tos">Acepto términos y condiciones</label>
+                </div>
+                <button className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">Crear cuenta / Ingresar</button>
+              </form>
+            </section>
+          )}
+
+          {activeTab === "cart" && (
+            <section className="mt-6">
+              <h2 className="text-xl font-bold mb-3">Carrito</h2>
+              {cart.length === 0 ? (
+                <div className="opacity-70">Tu carrito está vacío.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b border-gray-200 dark:border-gray-800">
+                        <th className="py-2 pr-3">Cant.</th>
+                        <th className="py-2 pr-3">Código</th>
+                        <th className="py-2 pr-3">Descripción</th>
+                        <th className="py-2 pr-3">Precio unitario</th>
+                        <th className="py-2 pr-3">Total</th>
+                        <th className="py-2 pr-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cart.map((i) => (
+                        <tr key={`${i.product.id}-${i.priceApplied}`} className="border-b border-gray-100 dark:border-gray-800">
+                          <td className="py-2 pr-3">
+                            <input
+                              type="number"
+                              min={1}
+                              value={i.qty}
+                              onChange={(e) => updateQty(i.product.id, i.priceApplied, e.target.value)}
+                              className="w-20 px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                            />
+                          </td>
+                          <td className="py-2 pr-3">{i.product.code}</td>
+                          <td className="py-2 pr-3">{i.product.name}</td>
+                          <td className="py-2 pr-3">{currency(i.priceApplied)}</td>
+                          <td className="py-2 pr-3">{currency(i.qty * i.priceApplied)}</td>
+                          <td className="py-2 pr-3">
+                            <button
+                              onClick={() => removeFromCart(i.product.id, i.priceApplied)}
+                              className="px-3 py-1 rounded-lg border border-red-400 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              Quitar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={4} className="py-3 text-right font-semibold">Total</td>
+                        <td className="py-3 font-bold">{currency(cartTotal)}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeTab === "shipping" && (
+            <section className="mt-6 max-w-xl">
+              <h2 className="text-xl font-bold mb-3">Envíos</h2>
+              <p className="text-sm opacity-80 mb-4">
+                Ingresá tu código postal para estimar el envío (simulado a modo demostración).
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                  placeholder="C.P. (4 dígitos)"
+                  className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 w-40"
+                />
+                <button
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => postalCode || alert("Ingresá un código postal válido")}
+                >
+                  Calcular
+                </button>
+              </div>
+              {shippingEstimate != null && (
+                <div className="mt-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                  <div className="text-sm">Costo estimado:</div>
+                  <div className="text-lg font-bold">{currency(shippingEstimate)}</div>
+                  <div className="text-xs opacity-70 mt-1">* El valor real puede variar según peso/volumen.</div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeTab === "about" && (
+            <StaticPage title="Quiénes somos">
+              Somos una empresa argentina dedicada a soluciones de empaque. Abastecemos a clientes minoristas y mayoristas con foco en calidad, precio y tiempos de entrega.
+            </StaticPage>
+          )}
+
+          {activeTab === "payments" && (
+            <StaticPage title="Formas de pago">
+              Aceptamos transferencias bancarias, tarjetas de crédito/débito y pagos en efectivo en sucursal. Para mayoristas habilitamos cuenta corriente sujeta a aprobación.
+            </StaticPage>
+          )}
+
+          {activeTab === "contact" && (
+            <StaticPage title="Contacto">
+              Escribinos a <a className="underline" href="mailto:ventas@tumarca.com">ventas@tumarca.com</a> o por WhatsApp al +54 11 5555-1234. Nuestro horario es lun-vie 9 a 18 hs.
+            </StaticPage>
+          )}
+        </main>
+
+        <footer className="border-t border-gray-200 dark:border-gray-800 py-8 text-center text-sm opacity-70">
+          © {new Date().getFullYear()} TuMarca S.R.L. — Quilmes, Buenos Aires, Argentina
+        </footer>
+      </div>
+
+      {/* --- COMENTARIOS TÉCNICOS / BACKEND SUGERIDO ---
+
+      1) Esquema de base de datos MySQL (sugerido)
+
+      CREATE TABLE users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role ENUM('retail','wholesale','admin') NOT NULL DEFAULT 'retail',
+        company_name VARCHAR(120),
+        cuit VARCHAR(20),
+        email VARCHAR(120) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE products (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        category VARCHAR(100),
+        price_retail DECIMAL(12,2) NOT NULL,
+        price_wholesale DECIMAL(12,2) NOT NULL,
+        featured_retail TINYINT(1) NOT NULL DEFAULT 0,
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE favorites (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        product_id INT NOT NULL,
+        mode ENUM('retail','wholesale') NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_fav (user_id, product_id, mode),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (product_id) REFERENCES products(id)
+      );
+
+      CREATE TABLE carts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        status ENUM('open','ordered','cancelled') NOT NULL DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+
+      CREATE TABLE cart_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        cart_id INT NOT NULL,
+        product_id INT NOT NULL,
+        qty INT NOT NULL,
+        unit_price DECIMAL(12,2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cart_id) REFERENCES carts(id),
+        FOREIGN KEY (product_id) REFERENCES products(id)
+      );
+
+      2) Endpoints REST (ejemplo con rutas tipo /api)
+
+      POST   /api/auth/register        -> crea usuario (hash de contraseña con bcrypt)
+      POST   /api/auth/login           -> devuelve JWT/Session
+      GET    /api/products             -> lista productos (filtros: category, q, active)
+      POST   /api/products             -> (admin) crea producto
+      PATCH  /api/products/:id         -> (admin) edita producto
+      GET    /api/favorites            -> del usuario logueado
+      POST   /api/favorites            -> { product_id, mode }
+      DELETE /api/favorites/:id        -> quita
+      GET    /api/carts/current        -> carrito abierto del usuario
+      POST   /api/carts/add-item       -> { product_id, qty } (backend decide price según role)
+      PATCH  /api/carts/item/:id       -> actualiza qty
+      DELETE /api/carts/item/:id       -> elimina ítem
+      POST   /api/orders/checkout      -> genera pedido a partir del carrito
+
+      Lógica de precios: el backend debe calcular el precio aplicable según el rol del usuario
+      (retail/wholesale) para evitar manipulación desde el cliente.
+
+      3) Roles / visibilidad del catálogo
+      - Invitado/retail: mostrar todos o sólo destacados (configurable). Siempre con price_retail.
+      - Wholesale: requiere usuario validado (role='wholesale') -> price_wholesale.
+
+      4) Modo oscuro
+      - Ya implementado via estado local que agrega la clase 'dark' a la raíz.
+      - En Tailwind, las clases 'dark:*' aplican estilos automáticamente.
+
+      5) Próximos pasos de producción
+      - Separar en componentes: ProductCard, CartTable, FavoritesList, Navbar, Header.
+      - Implementar React Query/RTK Query para datos desde API real.
+      - Autenticación con JWT + cookies HttpOnly.
+      - Persistencia local (localStorage) de carrito y modo oscuro.
+      - Validación de CUIT (algoritmo de dígito verificador) y campos requeridos.
+
+      6) Seguridad / buenas prácticas
+      - Sanitizar inputs, usar consultas preparadas y migraciones.
+      - En el checkout, recalcular totales en el backend.
+      - Logs de cambios en precios y stocks.
+
+      --- FIN COMENTARIOS --- */}
+    </div>
+  );
+}
+
+// ---------- Componentes auxiliares ----------
+function NavButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={classNames(
+        "px-4 py-2 rounded-xl text-sm",
+        active ? "bg-blue-600 text-white" : "hover:bg-gray-200 dark:hover:bg-gray-700"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CategorySelect({ value, setValue }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm opacity-80">Categoría:</span>
+      <select
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-sm"
+      >
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function StaticPage({ title, children }) {
+  return (
+    <section className="mt-6 max-w-3xl">
+      <h2 className="text-xl font-bold mb-3">{title}</h2>
+      <div className="prose dark:prose-invert max-w-none">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+// ---------- Íconos simples (SVG inline) ----------
+function CartIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+      <path d="M2 3h2l.4 2M7 13h10l3-8H5.4M7 13L5.4 5M7 13l-2 9m12-9l2 9M9 22a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+      <path d="M12 18a6 6 0 100-12 6 6 0 000 12zm0 4a1 1 0 011 1v1h-2v-1a1 1 0 011-1zm0-20a1 1 0 00-1-1V0h2v1a1 1 0 00-1 1zM0 13H1a1 1 0 100-2H0v2zm23 0h1v-2h-1a1 1 0 100 2zM4.22 19.78l.7.7 1.41-1.41-.7-.71-1.41 1.42zM17.66 6.34l.71.71 1.41-1.41-.71-.71-1.41 1.41zM4.22 4.22L5.64 5.64l.7-.71L4.93 3.5l-.71.72zM18.36 18.36l1.41 1.41.71-.71-1.41-1.41-.71.71z" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 1021 12.79z" />
+    </svg>
+  );
+}
+
+</body>
+</html>

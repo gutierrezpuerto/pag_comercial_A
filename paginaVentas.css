@@ -1,0 +1,73 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+
+}
+/*Menu superior*/
+.menuSuperior{
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    background-color: blanchedalmond;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    font-size: 15px;
+    padding: 10px;
+    
+}
+.menuInic{
+    list-style: none;
+    display: flex;
+    gap:20px;
+    align-items: center;
+}
+.menuInic li{
+    cursor:pointer;
+    padding:8px 12px;
+    border-radius: 15px;
+}
+.menuInic li:hover{
+    background-color: rgb(255, 221, 153);
+}
+/*header Encabeado con Logo y buscador*/
+.headerInfo{
+    display: flex;
+    justify-content: space-around; 
+    background-color: blanchedalmond;  
+}
+.logo {
+    margin: 5px 0px 10px 0px;
+    max-width: 100px;
+    max-height: 100px;
+}
+.telefono, .carrito{
+    margin: 5px 0px 5px 0px;
+    max-width: 30px;
+    max-height: 30px;
+}
+.contacto {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.tel{
+    font-size:larger;
+    font-weight: bold;
+}
+.carritocompra {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+p{
+    font-size: medium;
+}
+
+/* Estilo para menu del body*/
+.menu1{
+    display: flex;
+    list-style: none;
+    justify-content: space-around;
+    align-items: center;
+}
