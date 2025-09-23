@@ -42,7 +42,7 @@
     max-height: 100px;
 }
 .telefono, .carrito{
-    margin: 5px 0px 5px 0px;
+    margin: 5px 0px;
     max-width: 30px;
     max-height: 30px;
 }
@@ -70,4 +70,40 @@ p{
     list-style: none;
     justify-content: space-around;
     align-items: center;
+    background: blanchedalmond;
+}
+.menu1 li{
+    font-size: 25px;
+    padding: 10px 10px;
+    border-radius: 15px;
+}
+.menu1 li:hover{
+    background-color: rgb(255, 221, 153);
+    cursor: context-menu;
+}
+
+/* Estilo para el contenedor del cuerpo*/
+.Productos{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: rgb(255, 221, 153);
+}
+/* Estilo para Tarjetas de Productos*/
+.tarjetas-prod{
+    display: flex;
+    flex-direction: column;
+    border: 2px solid black;
+    min-width: 50%;
+    margin: 10px;
+    padding: 10px;
+    background-color: rgb(255, 221, 153);
+}
+.img-producto{
+    max-width: 100%;
+    height: auto;
+    align-items: center;
+    
 }
