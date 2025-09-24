@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Detalle del producto</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* estilos específicos de mi pagina que deberiamos modificar */
+    #caja-detalle {
+      max-width: 1150px;
+      margin: 30px auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    #imagen-grande {
+      background: #f1f5f9;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 400px;
+      font-size: 20px;
+      color: var(--muted);
+    }
+    #datos-producto {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #datos-producto h2 {
+      font-size: 26px;
+      font-weight: 700;
+    }
+    #precio-grande {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    #texto-detalle {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    #botones-compra { display:flex; gap:12px; }
+    @media(max-width:880px) {
+      #caja-detalle { grid-template-columns: 1fr; }
+      #imagen-grande { height:250px; }
+    }
+  </style>
+</head>
+<body>
+  <header id="barra-arriba">
+    <div class="caja">
+      <div class="marca">
+        <div class="logo">PM</div>
+        <div>
+          <h1>Portal Mayorista — Demo</h1>
+        </div>
+      </div>
+      <div class="botones-arriba">
+        <a href="index.html" class="btn">Inicio</a>
+        <a href="login.html" target="_blank" class="btn btn-primary">Iniciar sesión</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="caja-detalle">
+      <div id="imagen-grande">Foto del producto</div>
+
+      <div id="datos-producto">
+        <h2>Nombre del producto X</h2>
+        <div id="precio-grande">$ 25.000</div>
+        <div class="detalle-meta">Marca: Genérica · Presentación: Pack x12 unidades</div>
+
+        <p id="texto-detalle">
+          Este es un producto mayorista pensado para tu negocio. Se ofrece en
+          presentación por bulto para optimizar tu compra y asegurar mejores
+          márgenes de ganancia. Ideal para comercios minoristas o distribuidores.
+        </p>
+
+        <div id="botones-compra">
+          <button class="btn btn-primary">Comprar ahora</button>
+          <button class="btn">Agregar al carrito</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="abajo-pagina">
+    <div id="texto-abajo">
+      <div>© 2025 Portal Mayorista — Demo</div>
+    </div>
+  </footer>
+</body>
+</html>
