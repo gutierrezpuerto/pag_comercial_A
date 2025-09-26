@@ -44,8 +44,16 @@
         <nav class="menuLargo">
             <ul class="menu1">
             <li>Inicio</li>
-            <li>Categoria</li>
-            <li><a href="./nosotros.html">Nosotros</a></li>
+            <li class="dropdown">
+  <a href="#">Categorías</a>
+  <ul class="submenu">
+    <li><a href="#aromatizantes">Aromatizantes</a></li>
+    <li><a href="#sonido">Equipos de sonido</a></li>
+    <li><a href="#indumentaria">Indumentaria</a></li>
+    <li><a href="#tecnologia">Tecnología</a></li>
+  </ul>
+</li>
+                <li><a href="./nosotros.html">Nosotros</a></li>
             <li><a href="./nosotros.html#post">Envios</a></li>
             <li>Forma de Pago</li>
             <li>Contacto</li>
@@ -61,6 +69,28 @@
                  <!--Plantilla de productos -->
         <section> 
              <div class="Productos">
+                 
+<!-- Plantilla de categorias -->
+                 <!-- los nombres y emojis son provicionales si queres cambiarlos hacelo -->
+                 < <div class="tarjetas-prod" id="aromatizantes"> 
+      <div class="img-producto">🕯️</div>
+      <div class="nomProd">Aromatizantes</div>
+    </div>
+
+    <div class="tarjetas-prod" id="sonido">
+      <div class="img-producto">🎧</div>
+      <div class="nomProd">Equipo de sonido</div>
+    </div>
+
+    <div class="tarjetas-prod" id="indumentaria">
+      <div class="img-producto">👕</div>
+      <div class="nomProd">Indumentaria</div>
+    </div>
+
+    <div class="tarjetas-prod" id="tecnologia">
+      <div class="img-producto">💻</div>
+      <div class="nomProd">Tecnología</div>
+    </div>
     
              <!--Tarjeta de producto-->
                  <a href="detalleprodct.html" class="tarjeta-link">
@@ -76,7 +106,8 @@
                      <button>Favoritos</button>
                  </div>
                  </div> 
-                <a/><!-- Fin de Tarjeta de producto-->
+                <a/>
+                    <!-- Fin de Tarjeta de producto-->
             
              <!--Tarjeta de producto-->
             <a href="detalleprodct.html" class="tarjeta-link">
